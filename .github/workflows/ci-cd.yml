@@ -1,0 +1,137 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  AZURE_WEBAPP_NAME: 'timesheet-tracker-api'
+  AZURE_WEBAPP_PACKAGE_PATH: './src/backend/TimesheetTracker.API'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore ./src/backend/TimesheetTracker.API/TimesheetTracker.API.csproj
+    
+    - name: Build
+      run: dotnet build ./src/backend/TimesheetTracker.API/TimesheetTracker.API.csproj --no-restore --configuration Release
+    
+    - name: Test
+      run: dotnet test ./tests/MyDotNetApp.Tests/MyDotNetApp.Tests.csproj --no-build --verbosity normal --configuration Release
+    
+    - name: Publish
+      run: dotnet publish ./src/backend/TimesheetTracker.API/TimesheetTracker.API.csproj --no-build --configuration Release --output ./publish
+    
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v4
+      with:
+        name: timesheet-tracker-api
+        path: ./publish
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  code-quality:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+    
+    - name: Run tests with coverage
+      run: dotnet test ./tests/MyDotNetApp.Tests/MyDotNetApp.Tests.csproj --collect:"XPlat Code Coverage" --results-directory ./coverage
+    
+    - name: Generate coverage report
+      run: reportgenerator -reports:"./coverage/**/coverage.cobertura.xml" -targetdir:"./coverage/report" -reporttypes:"Html;TextSummary"
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        directory: ./coverage
+        flags: unittests
+        name: codecov-umbrella
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan, code-quality]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v4
+      with:
+        name: timesheet-tracker-api
+        path: ./publish
+    
+    - name: Deploy to Azure Web App (Staging)
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}-staging
+        slot-name: 'staging'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_STAGING }}
+        package: ./publish
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan, code-quality]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v4
+      with:
+        name: timesheet-tracker-api
+        path: ./publish
+    
+    - name: Deploy to Azure Web App (Production)
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PRODUCTION }}
+        package: ./publish
+    
+    - name: Run health check
+      run: |
+        sleep 30
+        curl -f https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health || exit 1

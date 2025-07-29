@@ -1,0 +1,112 @@
+﻿@namespace TimesheetTracker.Client.Layout
+@inject IAuthenticationService AuthService
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Timesheet Tracker</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="nav flex-column">
+        @if (AuthService.IsAuthenticated)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="timeentries">
+                    <span class="bi bi-clock-fill-nav-menu" aria-hidden="true"></span> Time Entries
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="timer">
+                    <span class="bi bi-play-circle-fill-nav-menu" aria-hidden="true"></span> Timer
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="projects">
+                    <span class="bi bi-folder-fill-nav-menu" aria-hidden="true"></span> Projects
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="add-project">
+                    <span class="bi bi-plus-circle-fill-nav-menu" aria-hidden="true"></span> Add Project
+                </NavLink>
+            </div>
+            
+            @if (AuthService.IsManager)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="approvals">
+                        <span class="bi bi-check-circle-fill-nav-menu" aria-hidden="true"></span> Approvals
+                    </NavLink>
+                </div>
+                
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="reports">
+                        <span class="bi bi-graph-up-nav-menu" aria-hidden="true"></span> Reports
+                    </NavLink>
+                </div>
+            }
+            
+            @if (AuthService.IsAdmin)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="users">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Login
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="register">
+                    <span class="bi bi-person-plus-fill-nav-menu" aria-hidden="true"></span> Register
+                </NavLink>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    private void OnAuthenticationStateChanged(bool isAuthenticated)
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}

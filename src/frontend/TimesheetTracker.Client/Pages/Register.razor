@@ -1,0 +1,120 @@
+@page "/register"
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Create Account</h3>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@registerRequest" OnValidSubmit="@HandleRegister">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <InputText @bind-Value="registerRequest.FirstName" class="form-control" id="firstName" placeholder="First Name" />
+                                <ValidationMessage For="@(() => registerRequest.FirstName)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <InputText @bind-Value="registerRequest.LastName" class="form-control" id="lastName" placeholder="Last Name" />
+                                <ValidationMessage For="@(() => registerRequest.LastName)" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText @bind-Value="registerRequest.Email" class="form-control" id="email" type="email" placeholder="Enter your email" />
+                            <ValidationMessage For="@(() => registerRequest.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="department" class="form-label">Department</label>
+                            <InputText @bind-Value="registerRequest.Department" class="form-control" id="department" placeholder="Department (Optional)" />
+                            <ValidationMessage For="@(() => registerRequest.Department)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText type="password" @bind-Value="registerRequest.Password" class="form-control" id="password" placeholder="Enter password" />
+                            <ValidationMessage For="@(() => registerRequest.Password)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <InputText type="password" @bind-Value="registerRequest.ConfirmPassword" class="form-control" id="confirmPassword" placeholder="Confirm password" />
+                            <ValidationMessage For="@(() => registerRequest.ConfirmPassword)" />
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" disabled="@isRegistering">
+                                @if (isRegistering)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                }
+                                Create Account
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <hr />
+                    <div class="text-center">
+                        <p>Already have an account? <a href="/login">Login here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest registerRequest = new();
+    private string errorMessage = string.Empty;
+    private bool isRegistering = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Redirect if already authenticated
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isRegistering = true;
+            errorMessage = string.Empty;
+
+            var success = await AuthService.RegisterAsync(registerRequest);
+            if (success)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Registration failed. Please check your information and try again.";
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "An error occurred during registration. Please try again.";
+        }
+        finally
+        {
+            isRegistering = false;
+        }
+    }
+}

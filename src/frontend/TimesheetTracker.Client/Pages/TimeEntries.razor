@@ -1,0 +1,70 @@
+@page "/timeentries"
+@using TimesheetTracker.Client.Services
+@using TimesheetTracker.Client.Models
+@using Microsoft.JSInterop
+@inject IApiService ApiService
+@inject IJSRuntime JS
+
+<h3>Time Entries</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (entries == null)
+{
+    <p>Loading...</p>
+}
+else if (!entries.Any())
+{
+    <p>No time entries found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Task</th>
+                <th>Description</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration (h)</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in entries)
+            {
+                <tr>
+                    <td>@entry.ProjectName</td>
+                    <td>@entry.TaskName</td>
+                    <td>@entry.Description</td>
+                    <td>@entry.StartTime.AddHours(5.5).ToString("g")</td>
+                    <td>@(entry.EndTime.HasValue ? entry.EndTime.Value.AddHours(5.5).ToString("g") : "-")</td>
+                    <td>@((entry.Duration / 60.0).ToString("F2"))</td>
+                    <td>@entry.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    // ...existing code...
+    private List<TimeEntryDto>? entries;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            entries = await ApiService.GetMyTimeEntriesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load time entries: {ex.Message}";
+            await JS.InvokeVoidAsync("console.error", $"TimeEntries error: {ex}");
+        }
+    }
+}

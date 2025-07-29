@@ -1,0 +1,263 @@
+@page "/timer"
+@inject IApiService ApiService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Timer - Timesheet Tracker</PageTitle>
+
+<div class="container">
+    <h2>Timer</h2>
+
+    @if (!AuthService.IsAuthenticated)
+    {
+        <div class="alert alert-warning">
+            Please <a href="/login">login</a> to use the timer.
+        </div>
+        return;
+    }
+
+    @if (activeTimer != null)
+    {
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-stopwatch"></i> Timer Running
+                        </h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <h2 class="display-4 text-success">@activeTimer.ProjectName</h2>
+                        <p class="lead">@activeTimer.Description</p>
+                        <p class="text-muted">Started: @activeTimer.StartTime.ToString("HH:mm:ss")</p>
+                        
+                        <div class="my-4">
+                            <h3 class="text-primary">@GetElapsedTime()</h3>
+                        </div>
+
+                        <button class="btn btn-danger btn-lg" @onclick="() => StopTimer(activeTimer.Id)">
+                            <i class="bi bi-stop-fill"></i> Stop Timer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">Start New Timer</h4>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@startTimerRequest" OnValidSubmit="@StartTimer">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger" />
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger">@errorMessage</div>
+                            }
+
+                            <div class="mb-3">
+                                <label for="project" class="form-label">Project</label>
+                                <InputSelect @bind-Value="startTimerRequest.ProjectId" class="form-select" id="project">
+                                    <option value="">Select a project...</option>
+                                    @if (projects != null)
+                                    {
+                                        @foreach (var project in projects)
+                                        {
+                                            <option value="@project.Id">@project.Name - @project.ClientName</option>
+                                        }
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => startTimerRequest.ProjectId)" />
+                            </div>
+
+
+                            <div class="mb-3">
+                                <label for="taskName" class="form-label">Task Name</label>
+                                <InputText @bind-Value="startTimerRequest.TaskName" class="form-control" id="taskName" placeholder="Task name (required)" />
+                                <ValidationMessage For="@(() => startTimerRequest.TaskName)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Task Description</label>
+                                <InputTextArea @bind-Value="startTimerRequest.Description" class="form-control" id="description" rows="3" placeholder="What are you working on?" />
+                                <ValidationMessage For="@(() => startTimerRequest.Description)" />
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success btn-lg" disabled="@isStarting">
+                                    @if (isStarting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    }
+                                    <i class="bi bi-play-fill"></i> Start Timer
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (recentEntries?.Any() == true)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Time Entries</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Description</th>
+                                        <th>Date</th>
+                                        <th>Duration</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var entry in recentEntries.Take(10))
+                                    {
+                                        <tr>
+                                            <td>@entry.ProjectName</td>
+                                            <td>@entry.Description</td>
+                                            <td>@entry.StartTime.ToString("MM/dd/yyyy")</td>
+                                            <td>@entry.Duration.ToString("F1")h</td>
+                                            <td>
+                                                <span class="badge bg-@GetStatusColor(entry.Status)">@entry.Status</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private StartTimerRequest startTimerRequest = new();
+    private List<ProjectDto>? projects;
+    private TimeEntryDto? activeTimer;
+    private List<TimeEntryDto>? recentEntries;
+    private string errorMessage = string.Empty;
+    private bool isStarting = false;
+    private System.Threading.Timer? refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadData();
+            
+            // Set up a timer to refresh the active timer display every second
+            refreshTimer = new System.Threading.Timer(async _ => await InvokeAsync(StateHasChanged), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Load projects
+            projects = await ApiService.GetActiveProjectsAsync();
+
+            // Check for active timer
+            var timers = await ApiService.GetActiveTimersAsync();
+            activeTimer = timers?.FirstOrDefault();
+
+            // Load recent entries
+            recentEntries = await ApiService.GetMyTimeEntriesAsync();
+            recentEntries = recentEntries?.OrderByDescending(x => x.CreatedAt).ToList();
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to load data. Please refresh the page.";
+        }
+    }
+
+    private async Task StartTimer()
+    {
+        try
+        {
+            isStarting = true;
+            errorMessage = string.Empty;
+
+            var timer = await ApiService.StartTimerAsync(startTimerRequest);
+            if (timer != null)
+            {
+                activeTimer = timer;
+                startTimerRequest = new();
+                await LoadData();
+            }
+            else
+            {
+                errorMessage = "Failed to start timer. Please try again.";
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "An error occurred while starting the timer.";
+        }
+        finally
+        {
+            isStarting = false;
+        }
+    }
+
+    private async Task StopTimer(Guid timerId)
+    {
+        try
+        {
+            var success = await ApiService.StopTimerAsync(timerId);
+            if (success)
+            {
+                activeTimer = null;
+                await LoadData();
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "Failed to stop timer.";
+        }
+    }
+
+    private string GetElapsedTime()
+    {
+        if (activeTimer == null) return "00:00:00";
+        var end = activeTimer.EndTime ?? DateTime.Now;
+        var elapsed = end - activeTimer.StartTime;
+        return elapsed.ToString(@"hh\:mm\:ss");
+    }
+
+    private string GetStatusColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "approved" => "success",
+            "pending" => "warning",
+            "rejected" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        refreshTimer?.Dispose();
+    }
+}

@@ -1,0 +1,79 @@
+﻿@namespace TimesheetTracker.Client.Layout
+
+@inherits LayoutComponentBase
+@inject IAuthenticationService AuthService
+@inject IJSRuntime JS
+@implements IDisposable
+
+@code {
+    private bool authInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await AuthService.InitializeAsync();
+        authInitialized = true;
+        StateHasChanged();
+    }
+
+    private void OnAuthenticationStateChanged(bool isAuthenticated)
+    {
+        StateHasChanged();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}
+
+@if (!authInitialized)
+{
+    <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading authentication...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+
+        <main>
+            <div class="top-row px-4">
+                @if (AuthService.IsAuthenticated)
+                {
+                    <div class="user-info">
+                        <span class="user-name">Welcome, @AuthService.CurrentUser?.FirstName @AuthService.CurrentUser?.LastName</span>
+                        <span class="user-role">(@AuthService.CurrentUser?.Role)</span>
+                        <button class="btn btn-outline-danger btn-sm ms-3" @onclick="LogoutAsync">Logout</button>
+                    </div>
+                }
+                else
+                {
+                    <a href="login" class="btn btn-primary">Login</a>
+                }
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+

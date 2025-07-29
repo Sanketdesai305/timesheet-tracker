@@ -1,0 +1,250 @@
+﻿@page "/"
+@inject IAuthenticationService AuthService
+@inject IApiService ApiService
+
+<PageTitle>Dashboard - Timesheet Tracker</PageTitle>
+
+@if (AuthService.IsAuthenticated)
+{
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <h1>Dashboard</h1>
+                <p class="lead">Welcome back, @AuthService.CurrentUser?.FirstName!</p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Quick Stats -->
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@todayHours.ToString("F1")</h4>
+                                <p class="card-text">Hours Today</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-clock-fill fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@weekHours.ToString("F1")</h4>
+                                <p class="card-text">Hours This Week</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-calendar-week-fill fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@pendingEntries</h4>
+                                <p class="card-text">Pending Approvals</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-clock-history fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@activeProjects</h4>
+                                <p class="card-text">Active Projects</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-folder-fill fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Timer -->
+        @if (activeTimer != null)
+        {
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="alert-heading">
+                                    <i class="bi bi-stopwatch"></i> Timer Running
+                                </h5>
+                                <p class="mb-0">
+                                    <strong>@activeTimer.ProjectName</strong> - @activeTimer.Description<br />
+                                    Started: @activeTimer.StartTime.ToString("HH:mm")
+                                </p>
+                            </div>
+                            <button class="btn btn-outline-danger" @onclick="() => StopTimer(activeTimer.Id)">
+                                <i class="bi bi-stop-fill"></i> Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Quick Actions -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/timer" class="btn btn-primary">
+                                <i class="bi bi-play-circle-fill"></i> Start Timer
+                            </a>
+                            <a href="/timeentries" class="btn btn-outline-primary">
+                                <i class="bi bi-clock"></i> View Time Entries
+                            </a>
+                            <a href="/projects" class="btn btn-outline-secondary">
+                                <i class="bi bi-folder"></i> Manage Projects
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Time Entries</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (recentEntries?.Any() == true)
+                        {
+                            @foreach (var entry in recentEntries.Take(5))
+                            {
+                                <div class="d-flex justify-content-between py-2 border-bottom">
+                                    <div>
+                                        <strong>@entry.ProjectName</strong><br />
+                                        <small class="text-muted">@entry.Description</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-secondary">@entry.Duration.ToString("F1")h</span><br />
+                                        <small class="text-muted">@entry.StartTime.ToString("MM/dd")</small>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No recent time entries found.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h1>Welcome to Timesheet Tracker</h1>
+                <p class="lead">Track your time efficiently and manage your projects with ease.</p>
+                <div class="mt-4">
+                    <a href="/login" class="btn btn-primary btn-lg me-3">Login</a>
+                    <a href="/register" class="btn btn-outline-primary btn-lg">Register</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private double todayHours = 0;
+    private double weekHours = 0;
+    private int pendingEntries = 0;
+    private int activeProjects = 0;
+    private TimeEntryDto? activeTimer;
+    private List<TimeEntryDto>? recentEntries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            await LoadDashboardData();
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            var today = DateTime.Today;
+            var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
+
+            // Get today's hours
+            var todayEntries = await ApiService.GetTimeEntriesByDateRangeAsync(today, today);
+            todayHours = todayEntries?.Sum(x => x.Duration) ?? 0;
+
+            // Get this week's hours
+            var weekEntries = await ApiService.GetTimeEntriesByDateRangeAsync(startOfWeek, today.AddDays(6));
+            weekHours = weekEntries?.Sum(x => x.Duration) ?? 0;
+
+            // Get pending entries count
+            var pending = await ApiService.GetPendingApprovalsAsync();
+            pendingEntries = pending?.Count ?? 0;
+
+            // Get active projects count
+            var projects = await ApiService.GetActiveProjectsAsync();
+            activeProjects = projects?.Count ?? 0;
+
+            // Get active timer
+            var timers = await ApiService.GetActiveTimersAsync();
+            activeTimer = timers?.FirstOrDefault();
+
+            // Get recent entries
+            recentEntries = await ApiService.GetMyTimeEntriesAsync();
+            recentEntries = recentEntries?.OrderByDescending(x => x.CreatedAt).Take(5).ToList();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - could show a toast notification
+        }
+    }
+
+    private async Task StopTimer(Guid timerId)
+    {
+        try
+        {
+            var success = await ApiService.StopTimerAsync(timerId);
+            if (success)
+            {
+                await LoadDashboardData();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+}
