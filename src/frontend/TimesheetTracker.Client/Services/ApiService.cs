@@ -4,7 +4,7 @@ using TimesheetTracker.Client.Models;
 
 namespace TimesheetTracker.Client.Services
 {
-    public interface IApiService
+    public partial interface IApiService
     {
         // Authentication
         Task<LoginResponse?> LoginAsync(LoginRequest request);
@@ -41,12 +41,13 @@ namespace TimesheetTracker.Client.Services
         Task<TimeEntryDto?> ApproveTimeEntryAsync(Guid id, ApproveTimeEntryRequest request);
 
         // Reports
+        Task<List<ShiftInstanceDto>?> GetShiftInstancesAsync();
         Task<List<TimeEntryReportDto>?> GetTimeEntryReportAsync(DateTime startDate, DateTime endDate);
         Task<List<UserTimeReportDto>?> GetUserTimeReportAsync(DateTime startDate, DateTime endDate);
         Task<List<ProjectTimeReportDto>?> GetProjectTimeReportAsync(DateTime startDate, DateTime endDate);
     }
 
-    public class ApiService : IApiService
+    public partial class ApiService : IApiService
     {
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;

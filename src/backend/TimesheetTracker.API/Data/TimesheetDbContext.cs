@@ -12,6 +12,10 @@ namespace TimesheetTracker.API.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Project> Projects { get; set; }
         public DbSet<TimeEntry> TimeEntries { get; set; }
+
+        public DbSet<ShiftTemplate> ShiftTemplates { get; set; }
+        public DbSet<ShiftInstance> ShiftInstances { get; set; }
+        public DbSet<Holiday> Holidays { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -136,9 +140,15 @@ namespace TimesheetTracker.API.Data
         private void UpdateTimestamps()
         {
             var entries = ChangeTracker.Entries()
-                .Where(e => e.Entity is User || e.Entity is Project || e.Entity is TimeEntry)
+                .Where(e =>
+                    e.Entity is User ||
+                    e.Entity is Project ||
+                    e.Entity is TimeEntry ||
+                    e.Entity is ShiftTemplate ||
+                    e.Entity is ShiftInstance ||
+                    e.Entity is Holiday)
                 .Where(e => e.State == EntityState.Modified);
-                
+
             foreach (var entry in entries)
             {
                 if (entry.Entity.GetType().GetProperty("UpdatedAt") != null)

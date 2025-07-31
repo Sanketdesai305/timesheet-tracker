@@ -1,0 +1,260 @@
+@using System.Globalization
+@using TimesheetTracker.Client.Models
+@using Microsoft.JSInterop
+
+<div class="week-calendar-container">
+    <div class="week-calendar-header">
+        <button class="btn btn-sm btn-light" @onclick="PrevWeek">&#8592;</button>
+        <span class="week-calendar-title">@weekRangeLabel</span>
+        <button class="btn btn-sm btn-light" @onclick="NextWeek">&#8594;</button>
+    </div>
+    <div class="week-calendar-grid">
+        @{
+            debugShiftLogs.Clear(); // Clear logs before rendering events for this render
+        }
+        @for (int dayIdx = -1; dayIdx < weekDays.Count; dayIdx++)
+        {
+            if (dayIdx == -1)
+            {
+                <div class="week-time-col">
+                    <div class="week-day-header" style="background:transparent;border:none;"></div>
+                    @for (int hour = 0; hour < 24; hour++)
+                    {
+                        <div class="day-grid-hour time-label-row">
+                            <span class="inline-hour-label">@hour:00</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                var day = weekDays[dayIdx];
+                <div class="week-day-col">
+                    <div class="week-day-header">@day.ToString("ddd dd")</div>
+                    <div class="day-grid-bg" style="height: 1152px;">
+                        @for (int hour = 0; hour < 24; hour++)
+                        {
+                            <div class="day-grid-hour"></div>
+                        }
+                        <div class="day-events-container" style="height: 1152px;">
+                            @if (ShiftInstances != null)
+                            {
+                                var dayShifts = ShiftInstances.Where(s => s.Date.Date == day.Date).ToList();
+                                foreach (var shift in dayShifts)
+                                {
+                                    var startMinutes = shift.StartTime.TotalMinutes;
+                                    var endMinutes = shift.EndTime.TotalMinutes;
+                                    if (endMinutes > startMinutes)
+                                    {
+                                        // Normal shift
+                                        var top = (startMinutes / 60.0) * 48;
+                                        var height = Math.Max(8, ((endMinutes - startMinutes) / 60.0) * 48);
+                                        var topPx = $"{top}px";
+                                        var heightPx = $"{height}px";
+                                        debugShiftLogs.Add($"Shift: {shift.StartTime} - {shift.EndTime}, top: {top}, height: {height}");
+                                        <div class="week-shift-event-abs translucent-card"
+                                             style="position:absolute; left:2%; width:96%; top:@topPx; height:@heightPx; z-index:10;">
+                                            <span class="week-shift-title">@shift.StartTime.ToString("hh\\:mm") - @shift.EndTime.ToString("hh\\:mm")</span>
+                                            <span class="week-shift-user">@shift.AssignedToUserId</span>
+                                        </div>
+                                    }
+                                    else if (endMinutes < startMinutes)
+                                    {
+                                        // Overnight shift: part 1 (today, from start to midnight)
+                                        var top1 = (startMinutes / 60.0) * 48;
+                                        var height1 = Math.Max(8, ((1440 - startMinutes) / 60.0) * 48); // 1440 = 24*60
+                                        var topPx1 = $"{top1}px";
+                                        var heightPx1 = $"{height1}px";
+                                        debugShiftLogs.Add($"Overnight Shift (part1): {shift.StartTime} - 24:00, top: {top1}, height: {height1}");
+                                        <div class="week-shift-event-abs translucent-card"
+                                             style="position:absolute; left:2%; width:96%; top:@topPx1; height:@heightPx1; z-index:10;">
+                                            <span class="week-shift-title">@shift.StartTime.ToString("hh\\:mm") - 24:00</span>
+                                            <span class="week-shift-user">@shift.AssignedToUserId</span>
+                                        </div>
+                                    }
+                                }
+                                // Render overnight shift part 2 (next day, from 00:00 to end)
+                                if (dayIdx >= 0)
+                                {
+                                    var prevDay = day.AddDays(-1);
+                                    var overnightShifts = ShiftInstances?.Where(s => s.Date.Date == prevDay.Date && s.EndTime.TotalMinutes < s.StartTime.TotalMinutes).ToList() ?? new List<ShiftInstanceDto>();
+                                    foreach (var shift in overnightShifts)
+                                    {
+                                        var endMinutes = shift.EndTime.TotalMinutes;
+                                        var top2 = 0;
+                                        var height2 = Math.Max(8, (endMinutes / 60.0) * 48);
+                                        var topPx2 = $"{top2}px";
+                                        var heightPx2 = $"{height2}px";
+                                        debugShiftLogs.Add($"Overnight Shift (part2): 00:00 - {shift.EndTime}, top: {top2}, height: {height2}");
+                                        <div class="week-shift-event-abs translucent-card"
+                                             style="position:absolute; left:2%; width:96%; top:@topPx2; height:@heightPx2; z-index:10;">
+                                            <span class="week-shift-title">00:00 - @shift.EndTime.ToString("hh\\:mm")</span>
+                                            <span class="week-shift-user">@shift.AssignedToUserId</span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Parameter] public List<ShiftInstanceDto>? ShiftInstances { get; set; }
+
+    private DateTime currentWeekStart = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek + (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek);
+    private List<DateTime> weekDays => Enumerable.Range(0, 7).Select(i => currentWeekStart.AddDays(i)).ToList();
+    private string weekRangeLabel => $"{weekDays.First():MMM dd} - {weekDays.Last():MMM dd, yyyy}";
+
+    private List<string> debugShiftLogs = new();
+
+    private void PrevWeek() => currentWeekStart = currentWeekStart.AddDays(-7);
+    private void NextWeek() => currentWeekStart = currentWeekStart.AddDays(7);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (debugShiftLogs.Count > 0)
+        {
+            foreach (var log in debugShiftLogs)
+            {
+                await JS.InvokeVoidAsync("console.log", log);
+            }
+            debugShiftLogs.Clear();
+        }
+    }
+}
+
+<style>
+.week-calendar-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 1.5rem 1rem;
+}
+.week-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.week-calendar-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+.week-calendar-grid {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    min-height: 1200px;
+}
+.week-time-col {
+    width: 60px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    background: #fafbfc;
+    border-right: 1px solid #eee;
+}
+.inline-hour-label {
+    color: #bbb;
+    font-size: 0.95rem;
+    padding-left: 2px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 48px;
+    display: flex;
+    align-items: flex-start;
+    z-index: 2;
+}
+.time-label-row {
+    position: relative;
+    height: 48px;
+    border-bottom: 1px solid #d0d0d0;
+    width: 100%;
+    background: transparent;
+}
+.week-day-col {
+    flex: 1 1 0;
+    min-width: 120px;
+    border-right: 1px solid #eee;
+    position: relative;
+    background: #f9f9fb;
+    display: flex;
+    flex-direction: column;
+}
+.week-day-header {
+    height: 32px;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.05em;
+    line-height: 32px;
+    z-index: 3;
+    position: sticky;
+    top: 0;
+}
+.day-grid-bg {
+    position: relative;
+    height: 1152px; /* 24 * 48px */
+    width: 100%;
+}
+.day-grid-hour {
+    height: 48px;
+    border-bottom: 1px solid #d0d0d0;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    background: transparent;
+}
+.day-events-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1152px;
+    width: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+.week-shift-event-abs {
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 1em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.10);
+    font-weight: 500;
+    position: absolute;
+    z-index: 3;
+    overflow: hidden;
+    border: 1.5px solid #b6c6e6;
+    pointer-events: auto;
+}
+.translucent-card {
+    background: rgba(33, 150, 243, 0.18) !important;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.10);
+    border: 1.5px solid #b6c6e6;
+    color: #1976d2;
+}
+.week-shift-title {
+    font-weight: 600;
+    font-size: 1em;
+    margin-bottom: 2px;
+}
+.week-shift-user {
+    font-size: 0.92em;
+    color: #555;
+}
+</style> 

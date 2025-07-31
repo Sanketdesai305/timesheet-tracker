@@ -1,89 +1,92 @@
-﻿@namespace TimesheetTracker.Client.Layout
+﻿@using TimesheetTracker.Client.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
 @inject IAuthenticationService AuthService
+
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Timesheet Tracker</a>
+        <a class="navbar-brand" href="/">Timesheet Tracker</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
+        <nav class="nav-scrollable sidebar-bg">
+            <ul class="custom-nav">
+                <li><NavLink class="custom-nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/projects">Projects</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/addproject">Add Project</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/timeentries">Time Entries</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/timer">Timer</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/calendar">Calendar</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/shifts">Shift Templates</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/shiftinstances">Shift Instances</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/holidays">Holiday Manager</NavLink></li>
+                @if (AuthService.IsManager)
+                {
+                    <li><NavLink class="custom-nav-link" href="/approvals">Approvals</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/reports">Reports</NavLink></li>
+                }
+                @if (AuthService.IsAdmin)
+                {
+                    <li><NavLink class="custom-nav-link" href="/users">Users</NavLink></li>
+                }
+                @if (!AuthService.IsAuthenticated)
+                {
+                    <li><NavLink class="custom-nav-link" href="/login">Login</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/register">Register</NavLink></li>
+                }
+            </ul>
+        </nav>
+
+<style>
+    .sidebar-bg {
+        background: #232946 !important;
+        min-height: 100vh;
+        height: 100%;
+        width: 100%;
+    }
+    .top-row {
+        background: #232946 !important;
+    }
+    .custom-nav {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+        background: #232946;
+    }
+    .custom-nav li {
+        margin-bottom: 16px;
+    }
+    .custom-nav li:first-child {
+        margin-top: 28px;
+    }
+    .custom-nav-link {
+        text-decoration: none !important;
+        color: #eaeaea;
+        font-size: 1.08rem;
+        padding: 8px 18px;
+        border-radius: 6px;
+        display: block;
+        border: 1px solid transparent;
+        transition: background 0.2s, color 0.2s, border 0.2s;
+        background: #232946;
+    }
+    .custom-nav-link.active, .custom-nav-link:active, .custom-nav-link:focus {
+        background: #393e6c;
+        color: #fff;
+        border: 1px solid #393e6c;
+        text-decoration: none;
+    }
+    .custom-nav-link:hover {
+        background: #393e6c;
+        color: #fff;
+        border: 1px solid #393e6c;
+        text-decoration: none;
+    }
+</style>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        @if (AuthService.IsAuthenticated)
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
-                </NavLink>
-            </div>
-            
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="timeentries">
-                    <span class="bi bi-clock-fill-nav-menu" aria-hidden="true"></span> Time Entries
-                </NavLink>
-            </div>
-            
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="timer">
-                    <span class="bi bi-play-circle-fill-nav-menu" aria-hidden="true"></span> Timer
-                </NavLink>
-            </div>
-            
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="projects">
-                    <span class="bi bi-folder-fill-nav-menu" aria-hidden="true"></span> Projects
-                </NavLink>
-            </div>
-            
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="add-project">
-                    <span class="bi bi-plus-circle-fill-nav-menu" aria-hidden="true"></span> Add Project
-                </NavLink>
-            </div>
-            
-            @if (AuthService.IsManager)
-            {
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="approvals">
-                        <span class="bi bi-check-circle-fill-nav-menu" aria-hidden="true"></span> Approvals
-                    </NavLink>
-                </div>
-                
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="reports">
-                        <span class="bi bi-graph-up-nav-menu" aria-hidden="true"></span> Reports
-                    </NavLink>
-                </div>
-            }
-            
-            @if (AuthService.IsAdmin)
-            {
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="users">
-                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Users
-                    </NavLink>
-                </div>
-            }
-        }
-        else
-        {
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="login">
-                    <span class="bi bi-box-arrow-in-right-nav-menu" aria-hidden="true"></span> Login
-                </NavLink>
-            </div>
-            
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="register">
-                    <span class="bi bi-person-plus-fill-nav-menu" aria-hidden="true"></span> Register
-                </NavLink>
-            </div>
-        }
-    </nav>
-</div>
 
 @code {
     private bool collapseNavMenu = true;

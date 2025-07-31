@@ -44,7 +44,9 @@ namespace TimesheetTracker.API.Models
     public enum UserRole
     {
         Employee = 0,
-        Manager = 1,
-        Admin = 2
+        TeamLead = 1,
+        Manager = 2,
+        Admin = 3,
+        FinanceHR = 4
     }
 }

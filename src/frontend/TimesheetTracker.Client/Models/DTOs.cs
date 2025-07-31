@@ -74,7 +74,7 @@ namespace TimesheetTracker.Client.Models
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty; // Employee, TeamLead, Manager, Admin, FinanceHR
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
     }
@@ -94,7 +94,7 @@ namespace TimesheetTracker.Client.Models
         public string Department { get; set; } = string.Empty;
 
         [Required]
-        public string Role { get; set; } = "Employee";
+        public string Role { get; set; } = "Employee"; // Employee, TeamLead, Manager, Admin, FinanceHR
     }
 
     public class UpdateUserRequest
@@ -106,7 +106,7 @@ namespace TimesheetTracker.Client.Models
         public string LastName { get; set; } = string.Empty;
 
         public string Department { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty; // Employee, TeamLead, Manager, Admin, FinanceHR
         public bool IsActive { get; set; }
     }
 
@@ -127,10 +127,15 @@ namespace TimesheetTracker.Client.Models
         [Required]
         public string Name { get; set; } = string.Empty;
 
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
-        [Required]
-        public string ClientName { get; set; } = string.Empty;
+        public string? ClientName { get; set; }
+
+        public DateTime? StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        public decimal? Budget { get; set; }
     }
 
     public class UpdateProjectRequest

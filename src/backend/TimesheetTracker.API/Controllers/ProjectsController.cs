@@ -111,14 +111,20 @@ namespace TimesheetTracker.API.Controllers
         {
             try
             {
+                _logger.LogInformation("CreateProject called with: {@CreateProjectDto}", createProjectDto);
                 var userId = GetCurrentUserId();
                 var project = await _projectService.CreateAsync(createProjectDto, userId);
+                _logger.LogInformation("Project created successfully: {@Project}", project);
                 return CreatedAtAction(nameof(GetProject), new { id = project.Id }, ApiResponse<ProjectDto>.SuccessResult(project));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating project");
-                return StatusCode(500, ApiResponse<ProjectDto>.ErrorResult("An error occurred while creating the project"));
+                _logger.LogError(ex, "Error creating project. Incoming DTO: {@CreateProjectDto}", createProjectDto);
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError(ex.InnerException, "Inner exception during project creation");
+                }
+                return StatusCode(500, ApiResponse<ProjectDto>.ErrorResult($"An error occurred while creating the project: {ex.Message}"));
             }
         }
         

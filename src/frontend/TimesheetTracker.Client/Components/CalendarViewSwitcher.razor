@@ -1,0 +1,40 @@
+@using System.Globalization
+@using TimesheetTracker.Client.Models
+@using TimesheetTracker.Client.Components
+
+<div class="calendar-view-switcher mb-3">
+    <label>View:</label>
+    <select class="form-select form-select-sm d-inline w-auto ms-2" @onchange="@(e => OnViewChange(e))">
+        <option value="month" selected="@(currentView=="month")">Month</option>
+        <option value="week" selected="@(currentView=="week")">Week</option>
+    </select>
+</div>
+
+@if (currentView == "month")
+{
+    <SimpleCalendar ShiftInstances="ShiftInstances" />
+}
+else if (currentView == "week")
+{
+    <WeekCalendar ShiftInstances="ShiftInstances" />
+}
+
+@code {
+    [Parameter] public List<ShiftInstanceDto>? ShiftInstances { get; set; }
+
+    private string currentView = "month";
+
+    private void OnViewChange(ChangeEventArgs e)
+    {
+        currentView = e.Value?.ToString() ?? "month";
+        StateHasChanged();
+    }
+}
+
+<style>
+.calendar-view-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>

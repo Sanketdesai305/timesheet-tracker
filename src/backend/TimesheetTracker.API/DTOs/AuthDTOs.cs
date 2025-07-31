@@ -56,7 +56,7 @@ namespace TimesheetTracker.API.DTOs
         public string LastName { get; set; } = string.Empty;
         public string Department { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty; // Employee, TeamLead, Manager, Admin, FinanceHR
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
     }
@@ -76,7 +76,7 @@ namespace TimesheetTracker.API.DTOs
         public string LastName { get; set; } = string.Empty;
         
         [Required]
-        public string Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty; // Employee, TeamLead, Manager, Admin, FinanceHR
         
         [Required]
         [MinLength(6)]

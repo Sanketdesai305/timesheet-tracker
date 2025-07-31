@@ -1,0 +1,48 @@
+
+@page "/calendar"
+@using TimesheetTracker.Client.Models
+@using TimesheetTracker.Client.Components
+@inject IApiService ApiService
+
+
+<h3>Team Calendar</h3>
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (isLoading)
+{
+    <div>Loading calendar data...</div>
+}
+else
+{
+    <CalendarViewSwitcher ShiftInstances="shiftInstances" />
+}
+
+@using TimesheetTracker.Client.Services
+
+@code {
+    private List<ShiftTemplateDto>? shiftTemplates;
+    private List<HolidayDto>? holidays;
+    private List<ShiftInstanceDto>? shiftInstances;
+    private string? errorMessage;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            shiftTemplates = await ApiService.GetShiftTemplatesAsync();
+            holidays = await ApiService.GetHolidaysAsync();
+            shiftInstances = await ApiService.GetShiftInstancesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load calendar data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

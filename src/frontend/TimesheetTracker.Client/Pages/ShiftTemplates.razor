@@ -1,0 +1,59 @@
+@page "/shifts"
+@using TimesheetTracker.Client.Models
+@inject IApiService ApiService
+
+<h3>Shift Templates</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (shiftTemplates == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Recurrence</th>
+                <th>Active</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var shift in shiftTemplates)
+            {
+                <tr>
+                    <td>@shift.Name</td>
+                    <td>@shift.Description</td>
+                    <td>@shift.StartTime</td>
+                    <td>@shift.EndTime</td>
+                    <td>@shift.RecurrenceRule</td>
+                    <td>@shift.IsActive</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ShiftTemplateDto>? shiftTemplates;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            shiftTemplates = await ApiService.GetShiftTemplatesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load shift templates: {ex.Message}";
+        }
+    }
+}

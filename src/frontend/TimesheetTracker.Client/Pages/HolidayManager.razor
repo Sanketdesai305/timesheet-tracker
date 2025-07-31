@@ -1,0 +1,141 @@
+
+@page "/holidays"
+@using TimesheetTracker.Client.Models
+@using TimesheetTracker.Client.Services
+@inject IApiService ApiService
+
+<h3>Holiday Calendar</h3>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (holidays == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="holiday-grid">
+        @{
+            var currentYear = DateTime.Now.Year;
+        }
+        @for (int month = 1; month <= 12; month++)
+        {
+            var monthHolidays = holidays
+                .Where(h => h.Date.Year == currentYear && h.Date.Month == month)
+                .OrderBy(h => h.Date)
+                .ToList();
+            var monthName = new DateTime(currentYear, month, 1).ToString("MMM yyyy").ToUpper();
+        <div class="holiday-card">
+            <div class="holiday-card-header">@monthName</div>
+            <div class="holiday-card-body">
+                @if (monthHolidays.Any())
+                {
+                    @foreach (var holiday in monthHolidays)
+                    {
+                        <div class="holiday-entry">
+                            <div class="holiday-date">
+                                <span class="holiday-day">@holiday.Date.ToString("dd")</span>
+                                <span class="holiday-dow">@holiday.Date.ToString("ddd")</span>
+                            </div>
+                            <div class="holiday-info">
+                                <span class="holiday-name">@holiday.Name</span>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="no-holidays">No Holidays</div>
+                }
+            </div>
+        </div>
+        }
+    </div>
+}
+
+<style>
+.holiday-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.holiday-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    padding: 0;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+}
+.holiday-card-header {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #888;
+    background: #f7f8fa;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 0.75rem 1rem;
+    border-radius: 12px 12px 0 0;
+}
+.holiday-card-body {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.holiday-entry {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.holiday-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 38px;
+}
+.holiday-day {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #6c7a89;
+}
+.holiday-dow {
+    font-size: 0.9rem;
+    color: #b0b0b0;
+}
+.holiday-info {
+    flex: 1;
+}
+.holiday-name {
+    font-size: 1.05rem;
+    color: #4a4a4a;
+}
+.no-holidays {
+    color: #b0b0b0;
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 1.5rem;
+}
+</style>
+
+@code {
+    private List<HolidayDto>? holidays;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            holidays = await ApiService.GetHolidaysAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load holidays: {ex.Message}";
+        }
+    }
+}

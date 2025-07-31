@@ -1,0 +1,57 @@
+@page "/shiftinstances"
+@using TimesheetTracker.Client.Models
+@inject IApiService ApiService
+
+<h3>Shift Instances</h3>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <div class="alert alert-danger">@_errorMessage</div>
+}
+else if (_shiftInstances == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Assigned To</th>
+                <th>Published</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var instance in _shiftInstances)
+            {
+                <tr>
+                    <td>@instance.Date.ToString("yyyy-MM-dd")</td>
+                    <td>@instance.StartTime</td>
+                    <td>@instance.EndTime</td>
+                    <td>@instance.AssignedToUserId</td>
+                    <td>@(instance.IsPublished ? "Yes" : "No")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ShiftInstanceDto>? _shiftInstances;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _shiftInstances = await ApiService.GetShiftInstancesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load shift instances: {ex.Message}";
+        }
+    }
+}

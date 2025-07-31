@@ -1,0 +1,208 @@
+@using System.Globalization
+@using TimesheetTracker.Client.Models
+@namespace TimesheetTracker.Client.Components
+@inherits Microsoft.AspNetCore.Components.ComponentBase
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <button class="btn btn-sm btn-light" @onclick="PrevMonth">&#8592;</button>
+        <span class="calendar-title">@CurrentMonth.ToString("MMMM yyyy")</span>
+        <button class="btn btn-sm btn-light" @onclick="NextMonth">&#8594;</button>
+    </div>
+    <table class="calendar-table">
+        <thead>
+            <tr>
+                @foreach (var day in DayNames)
+                {
+                    <th>@day</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var week in Weeks)
+            {
+                <tr>
+                    @foreach (var day in week)
+                    {
+<td class="@(day.Month == CurrentMonth.Month ? "" : "text-muted") calendar-day-cell">
+    <div class="calendar-day-number">@day.Day</div>
+    <div class="calendar-events-list">
+        @if (ShiftInstances != null)
+        {
+            var dayShifts = ShiftInstances.Where(s => s.Date.Date == day.Date).ToList();
+            foreach (var shift in dayShifts)
+            {
+                var tooltip = $"Time: {shift.StartTime:hh\\:mm} - {shift.EndTime:hh\\:mm}\nUser: {shift.AssignedToUserId}{(shift.IsPublished ? "\n(Published)" : "")}";
+                <div class="calendar-shift-event" title="@tooltip">
+                    <span class="calendar-shift-time">@shift.StartTime.ToString("hh\\:mm")</span>
+                    <span class="calendar-shift-title">@shift.AssignedToUserId</span>
+                </div>
+            }
+        }
+    </div>
+</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public DateTime? InitialMonth { get; set; }
+    [Parameter] public List<ShiftInstanceDto>? ShiftInstances { get; set; }
+    private DateTime CurrentMonth { get; set; }
+    private List<string> DayNames { get; set; } = new();
+    private List<List<DateTime>> Weeks { get; set; } = new();
+
+    protected override void OnInitialized()
+    {
+        CurrentMonth = InitialMonth ?? DateTime.Today;
+        DayNames = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames.ToList();
+        BuildCalendar();
+    }
+
+    private void BuildCalendar()
+    {
+        var firstDay = new DateTime(CurrentMonth.Year, CurrentMonth.Month, 1);
+        var firstDayOfWeek = (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        var start = firstDay.AddDays(-(int)(firstDay.DayOfWeek - firstDayOfWeek + 7) % 7);
+        Weeks = new List<List<DateTime>>();
+        for (int w = 0; w < 6; w++)
+        {
+            var week = new List<DateTime>();
+            for (int d = 0; d < 7; d++)
+            {
+                week.Add(start.AddDays(w * 7 + d));
+            }
+            Weeks.Add(week);
+        }
+    }
+
+    private void PrevMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(-1);
+        BuildCalendar();
+    }
+
+    private void NextMonth()
+    {
+        CurrentMonth = CurrentMonth.AddMonths(1);
+        BuildCalendar();
+    }
+}
+
+<style>
+.calendar-container {
+    max-width: 420px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 1.5rem 1rem;
+    overflow-x: auto;
+    max-width: 100vw;
+}
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.calendar-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+.calendar-table {
+    width: 100%;
+    min-width: 630px;
+    border-collapse: collapse;
+    text-align: center;
+}
+.calendar-table th {
+    color: #888;
+    font-weight: 500;
+    padding-bottom: 0.5rem;
+}
+.calendar-table td {
+    padding: 0.2rem 0.1rem 0.2rem 0.1rem;
+    border-radius: 4px;
+    min-width: 90px;
+    height: 90px;
+    vertical-align: top;
+    position: relative;
+    background: #fff;
+    overflow: hidden;
+}
+.calendar-table td.text-muted {
+    color: #bbb;
+}
+.calendar-table td:hover {
+    background: #f0f0f0;
+    cursor: pointer;
+}
+.calendar-day-cell {
+    vertical-align: top;
+    position: relative;
+    min-width: 0;
+    height: 90px;
+    padding: 2px 2px 2px 2px;
+}
+.calendar-day-number {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+    margin-left: 2px;
+}
+.calendar-events-list {
+    max-height: 68px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.calendar-shift-event {
+    background: #e3e8fd;
+    color: #2d3a6b;
+    border-radius: 6px;
+    padding: 2px 4px 2px 4px;
+    font-size: 0.92em;
+    display: block;
+    cursor: pointer;
+    min-width: 0;
+    max-width: 100%;
+    transition: box-shadow 0.15s;
+    box-shadow: 0 1px 2px rgba(44,62,80,0.04);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.calendar-shift-event:hover {
+    background: #d1d8f7;
+    color: #1a237e;
+    box-shadow: 0 2px 8px rgba(44,62,80,0.10);
+    z-index: 2;
+}
+.calendar-shift-time {
+    font-weight: 600;
+    font-size: 0.93em;
+    margin-right: 2px;
+    color: #3949ab;
+}
+.calendar-shift-title {
+    font-size: 0.92em;
+    font-weight: 500;
+    color: #2d3a6b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 80px;
+    display: inline-block;
+    vertical-align: bottom;
+}
+</style>
