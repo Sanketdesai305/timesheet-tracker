@@ -9,12 +9,12 @@ namespace TimesheetTracker.Client.Services
     public interface IAuthenticationService
     {
         event Action<bool> AuthenticationStateChanged;
-        
         UserDto? CurrentUser { get; }
         bool IsAuthenticated { get; }
         bool IsAdmin { get; }
         bool IsManager { get; }
-        
+        bool IsTeamLead { get; }
+        bool IsFinanceHR { get; }
         Task<bool> LoginAsync(LoginRequest request);
         Task LogoutAsync();
         Task<bool> RegisterAsync(RegisterRequest request);
@@ -33,7 +33,9 @@ namespace TimesheetTracker.Client.Services
         public UserDto? CurrentUser { get; private set; }
         public bool IsAuthenticated => CurrentUser != null;
         public bool IsAdmin => CurrentUser?.Role == "Admin";
-        public bool IsManager => CurrentUser?.Role == "Manager" || IsAdmin;
+        public bool IsManager => CurrentUser?.Role == "Manager";
+        public bool IsTeamLead => CurrentUser?.Role == "TeamLead";
+        public bool IsFinanceHR => CurrentUser?.Role == "FinanceHR";
 
         public AuthenticationService(IApiService apiService, IJSRuntime jsRuntime, HttpClient httpClient)
         {

@@ -90,6 +90,9 @@ namespace TimesheetTracker.API.Data
         {
             // Seed admin user
             var adminUserId = Guid.NewGuid();
+            var teamLeadId = Guid.NewGuid();
+            var managerId = Guid.NewGuid();
+            var financeHrId = Guid.NewGuid();
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
@@ -99,6 +102,42 @@ namespace TimesheetTracker.API.Data
                     LastName = "Administrator",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                     Role = UserRole.Admin,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new User
+                {
+                    Id = teamLeadId,
+                    Email = "teamlead@timesheettracker.com",
+                    FirstName = "Team",
+                    LastName = "Lead",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("TeamLead@123"),
+                    Role = UserRole.TeamLead,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new User
+                {
+                    Id = managerId,
+                    Email = "manager@timesheettracker.com",
+                    FirstName = "Project",
+                    LastName = "Manager",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Manager@123"),
+                    Role = UserRole.Manager,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new User
+                {
+                    Id = financeHrId,
+                    Email = "financehr@timesheettracker.com",
+                    FirstName = "Finance",
+                    LastName = "HR",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("FinanceHR@123"),
+                    Role = UserRole.FinanceHR,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow

@@ -1,40 +1,105 @@
-﻿@using TimesheetTracker.Client.Services
+﻿@using TimesheetTracker.Client
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.WebAssembly
+@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Routing
+@using TimesheetTracker.Client.Services
+@using Microsoft.JSInterop
 @inject IAuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
+    <div class="container-fluid d-flex align-items-center justify-content-between">
         <a class="navbar-brand" href="/">Timesheet Tracker</a>
+        <!-- top-icons removed, now in MainLayout -->
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
         <nav class="nav-scrollable sidebar-bg">
+            <!-- Icons will be placed next to logout button below -->
             <ul class="custom-nav">
-                <li><NavLink class="custom-nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/projects">Projects</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/addproject">Add Project</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/timeentries">Time Entries</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/timer">Timer</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/calendar">Calendar</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/shifts">Shift Templates</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/shiftinstances">Shift Instances</NavLink></li>
-                <li><NavLink class="custom-nav-link" href="/holidays">Holiday Manager</NavLink></li>
+                @* Common modules for all authenticated users *@
+                @if (AuthService.IsAuthenticated)
+                {
+                    <li><NavLink class="custom-nav-link" href="/" Match="NavLinkMatch.All">Dashboard</NavLink></li>
+                    @if (!AuthService.IsFinanceHR)
+                    {
+                        <li><NavLink class="custom-nav-link" href="/timeentries" Match="NavLinkMatch.Prefix">Time Entry</NavLink></li>
+                        <li><NavLink class="custom-nav-link" href="/timer" Match="NavLinkMatch.Prefix">Start/Stop Timer</NavLink></li>
+                    }
+                }
+
+                @* Employee: Only common modules + Reports (self) *@
+                @if (AuthService.IsAuthenticated && !(AuthService.IsTeamLead || AuthService.IsManager || AuthService.IsFinanceHR || AuthService.IsAdmin))
+                {
+                    <li><NavLink class="custom-nav-link" href="/reports" Match="NavLinkMatch.Prefix">Reports</NavLink></li>
+                }
+
+                @* Team Lead: Team Timesheets, Approvals, Reports (self/team) *@
+                @if (AuthService.IsTeamLead)
+                {
+                    <li><NavLink class="custom-nav-link" href="/team" Match="NavLinkMatch.Prefix">Team Timesheets</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/reports" Match="NavLinkMatch.Prefix">Reports</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/approvals" Match="NavLinkMatch.Prefix">Approvals</NavLink></li>
+                }
+
+                @* Manager: Team Timesheets, Reports (self/team), Approvals, Billing/Payroll (View only) *@
                 @if (AuthService.IsManager)
                 {
-                    <li><NavLink class="custom-nav-link" href="/approvals">Approvals</NavLink></li>
-                    <li><NavLink class="custom-nav-link" href="/reports">Reports</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/team" Match="NavLinkMatch.Prefix">Team Timesheets</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/reports" Match="NavLinkMatch.Prefix">Reports</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/approvals" Match="NavLinkMatch.Prefix">Approvals</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/billing" Match="NavLinkMatch.Prefix">Billing/Payroll</NavLink></li>
                 }
+
+                @* Finance/HR: Dashboard, Reports, Billing/Payroll *@
+                @if (AuthService.IsFinanceHR)
+                {
+                    <li><NavLink class="custom-nav-link" href="/reports" Match="NavLinkMatch.Prefix">Reports</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/billing" Match="NavLinkMatch.Prefix">Billing/Payroll</NavLink></li>
+                }
+
+                @* Admin: All modules *@
                 @if (AuthService.IsAdmin)
                 {
-                    <li><NavLink class="custom-nav-link" href="/users">Users</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/team" Match="NavLinkMatch.Prefix">Team Timesheets</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/reports" Match="NavLinkMatch.Prefix">Reports</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/approvals" Match="NavLinkMatch.Prefix">Approvals</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/billing" Match="NavLinkMatch.Prefix">Billing/Payroll</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/settings" Match="NavLinkMatch.Prefix">System Settings</NavLink></li>
+                    <li><NavLink class="custom-nav-link" href="/users" Match="NavLinkMatch.Prefix">User/Role Management</NavLink></li>
                 }
+
+                @* General tabs for all users (authenticated or not) *@
+                @if (AuthService.IsAuthenticated && !AuthService.IsFinanceHR)
+                {
+                    <li class="sidebar-dropdown" tabindex="0">
+                        <a class="custom-nav-link dropdown-toggle" href="#" @onclick="ToggleCalendarDropdown" @onclick:preventDefault="true" aria-expanded="@calendarDropdownOpen">
+                            Calendar
+                        </a>
+                        <ul class="dropdown-menu sidebar-dropdown-menu @(calendarDropdownOpen ? "show" : "hide")">
+                            <li><NavLink class="dropdown-item" href="/calendar" Match="NavLinkMatch.Prefix" @onclick="CloseCalendarDropdown">Calendar</NavLink></li>
+                            <li><NavLink class="dropdown-item" href="/shifts" Match="NavLinkMatch.Prefix" @onclick="CloseCalendarDropdown">Shift View</NavLink></li>
+                            <li><NavLink class="dropdown-item" href="/shiftInstances" Match="NavLinkMatch.Prefix" @onclick="CloseCalendarDropdown">Instance View</NavLink></li>
+                        </ul>
+                    </li>
+                }
+                <li><NavLink class="custom-nav-link" href="/holidays" Match="NavLinkMatch.Prefix">Holidays</NavLink></li>
+                <li><NavLink class="custom-nav-link" href="/summary" Match="NavLinkMatch.Prefix">Summary</NavLink></li>
+                @* Notifications tab removed; now a top icon *@
+                <li><NavLink class="custom-nav-link" href="/help" Match="NavLinkMatch.Prefix">Help / Support</NavLink></li>
+
                 @if (!AuthService.IsAuthenticated)
                 {
                     <li><NavLink class="custom-nav-link" href="/login">Login</NavLink></li>
                     <li><NavLink class="custom-nav-link" href="/register">Register</NavLink></li>
                 }
+                @* Logout button for authenticated users *@
+                // ...existing code...
+                @* Icons moved to top nav *@
             </ul>
         </nav>
 
@@ -71,6 +136,35 @@
         transition: background 0.2s, color 0.2s, border 0.2s;
         background: #232946;
     }
+    .top-icons {
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+    }
+    .icon-group {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+    .icon-link {
+        color: #fff;
+        margin-left: 8px;
+        transition: color 0.2s;
+        text-decoration: none;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+    }
+    .icon-link:hover, .icon-link:focus {
+        color: #eaeaea;
+        outline: none;
+    }
+    .logout-btn {
+        margin-left: 8px;
+    }
     .custom-nav-link.active, .custom-nav-link:active, .custom-nav-link:focus {
         background: #393e6c;
         color: #fff;
@@ -83,6 +177,45 @@
         border: 1px solid #393e6c;
         text-decoration: none;
     }
+    .sidebar-dropdown {
+        position: relative;
+    }
+    .sidebar-dropdown-menu {
+        position: relative;
+        left: 12px;
+        top: 0;
+        min-width: 180px;
+        background: #232946;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        z-index: 1050;
+        margin-top: 0.25rem;
+        display: none;
+        /* border-left: 3px solid #393e6c; */
+    }
+    .sidebar-dropdown-menu.show {
+        display: block;
+    }
+    .sidebar-dropdown-menu.hide {
+        display: none;
+    }
+    .sidebar-dropdown .dropdown-item {
+        color: #fff;
+        padding: 8px 20px;
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.2s;
+        word-break: break-word;
+        white-space: normal;
+        line-height: 1.4;
+    }
+    .sidebar-dropdown .dropdown-item:hover {
+        background: #393e6c;
+    }
 </style>
     </div>
 </div>
@@ -90,17 +223,32 @@
 
 @code {
     private bool collapseNavMenu = true;
-
+    private bool calendarDropdownOpen = false;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private DotNetObjectReference<NavMenu>? _dotNetRef;
+    private IJSObjectReference? _jsModule;
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/calendarDropdown.mjs");
+        if (_jsModule != null)
+        {
+            await _jsModule.InvokeVoidAsync("registerCalendarDropdownClose", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void CloseCalendarDropdownFromJs()
+    {
+        calendarDropdownOpen = false;
+        StateHasChanged();
     }
 
     private void OnAuthenticationStateChanged(bool isAuthenticated)
@@ -108,8 +256,35 @@
         StateHasChanged();
     }
 
-    public void Dispose()
+  private async Task LogoutAsync()
+{
+    await AuthService.LogoutAsync(); // Perform logout
+    await JSRuntime.InvokeVoidAsync("customLogout"); // Safe JS call
+}
+
+
+    public async ValueTask DisposeAsync()
     {
         AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        if (_jsModule is not null)
+        {
+            await _jsModule.InvokeVoidAsync("disposeCalendarDropdownClose");
+            if (_jsModule is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync();
+            }
+        }
+        _dotNetRef?.Dispose();
+    }
+
+    private void ToggleCalendarDropdown()
+    {
+        calendarDropdownOpen = !calendarDropdownOpen;
+    }
+
+    private void CloseCalendarDropdown()
+    {
+        calendarDropdownOpen = false;
     }
 }
+

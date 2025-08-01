@@ -1,10 +1,23 @@
-﻿@using TimesheetTracker.Client.Layout
+﻿
+@using TimesheetTracker.Client.Layout
+@using TimesheetTracker.Client.Services
+@using TimesheetTracker.Client.Pages
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components
+
+@inject IAuthenticationService AuthService
 
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        @if (!AuthService.IsAuthenticated && routeData.PageType != null && !IsPublicRoute(routeData.PageType))
+        {
+            <RedirectToLogin />
+        }
+        else
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        }
     </Found>
     <NotFound>
         <LayoutView Layout="@typeof(MainLayout)">
@@ -12,3 +25,18 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    private static readonly string[] PublicRoutes = new[] { "/", "/login", "/register" };
+    private bool IsPublicRoute(Type pageType)
+    {
+        var routeAttrs = pageType.GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), true);
+        foreach (var attr in routeAttrs)
+        {
+            var route = ((Microsoft.AspNetCore.Components.RouteAttribute)attr).Template;
+            if (PublicRoutes.Contains(route, StringComparer.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+}
